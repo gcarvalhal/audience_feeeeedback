@@ -1,0 +1,47 @@
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Feedback</title>
+    <style>
+        #feedback-msg {
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dê seu feedback</h1>
+    <form id="form">
+        <button type="button" onclick="sendFeedback('👍 Entendi')">👍 Entendi</button>
+        <button type="button" onclick="sendFeedback('🤔 Muito rápido')">🤔 Muito rápido</button>
+        <button type="button" onclick="sendFeedback('😕 Não entendi')">😕 Não entendi</button>
+    </form>
+
+    <div id="feedback-msg"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        var socket = io();
+
+        function sendFeedback(msg) {
+            socket.emit("send_feedback", msg);
+        }
+
+        socket.on("new_feedback", function(data) {
+            var msgBox = document.getElementById("feedback-msg");
+            msgBox.innerText = data;
+
+            if (data.startsWith("⏳")) {
+                msgBox.style.color = "red";
+            } else {
+                msgBox.style.color = "green";
+            }
+        });
+    </script>
+</body>
+</html>

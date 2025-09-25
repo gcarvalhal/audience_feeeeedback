@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sondagem ao Vivo</title>
+    <style>
+        #vote-msg {
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ live_poll.question }}</h1>
+
+    {% for opt in poll_options %}
+        <button onclick="vote({{ opt.index }})">{{ opt.text }}</button><br>
+    {% endfor %}
+
+    <div id="vote-msg"></div>
+
+    <h2>Resultados:</h2>
+    <ul id="poll-results">
+        {% for opt, count in poll_results %}
+            <li>{{ opt }}: {{ count }}</li>
+        {% endfor %}
+    </ul>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        var socket = io();
+
+        function vote(index) {
+            socket.emit("vote", index);
+        }
+
+        socket.on("poll_update", function(data) {
+            // Atualiza lista de resultados
+            var ul = document.getElementById("poll-results");
+            ul.innerHTML = "";
+            for (var i = 0; i < data.options.length; i++) {
+                var li = document.createElement("li");
+                li.innerText = data.options[i] + ": " + data.votes[i];
+                ul.appendChild(li);
+            }
+
+            // Mostra mensagem de aviso (se houver)
+            var msgBox = document.getElementById("vote-msg");
+            if (data.message) {
+                msgBox.innerText = data.message;
+                msgBox.style.color = "red";
+            } else {
+                msgBox.innerText = "";
+            }
+        });
+    </script>
+</body>

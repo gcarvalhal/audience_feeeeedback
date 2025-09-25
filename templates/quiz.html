@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quiz Interativo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        .question-block {
+            margin-bottom: 30px;
+        }
+        .correct {
+            color: green;
+        }
+        .incorrect {
+            color: red;
+        }
+        #quiz-results {
+            margin-top: 40px;
+        }
+        #submit-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #submit-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Quiz Interativo</h1>
+    <form id="quiz-form">
+        {% for q in quiz %}
+            {% set question_index = loop.index0 %}
+            <div class="question-block">
+                <p><strong>{{ q.question }}</strong></p>
+                {% for opt in q.options %}
+                    <label>
+                        <input type="radio" name="q{{ question_index }}" value="{{ loop.index0 }}">
+                        {{ opt }}
+                    </label><br>
+                {% endfor %}
+            </div>
+        {% endfor %}
+        <button type="button" id="submit-btn" onclick="submitQuiz()" disabled>Enviar</button>
+    </form>
+
+    <div id="quiz-results"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+
+        function submitQuiz() {
+        const answers = [];
+        const totalQuestions = {{ quiz | length }};
+        for (let i = 0; i < totalQuestions; i++) {
+            const selected = document.querySelector(`input[name="q${i}"]:checked`);
+            answers.push(selected ? parseInt(selected.value) : null);
+        }
+        socket.emit("submit_quiz", answers);
+        }
+
+        function checkCompletion() {
+            const totalQuestions = {{ quiz | length }};
+            let allAnswered = true;
+            for (let i = 0; i < totalQuestions; i++) {
+                const selected = document.querySelector(`input[name="q${i}"]:checked`);
+                if (!selected) {
+                    allAnswered = false;
+                    break;
+                }
+            }
+            document.getElementById("submit-btn").disabled = !allAnswered;
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const radios = document.querySelectorAll('input[type="radio"]');
+            radios.forEach(radio => {
+                radio.addEventListener("change", checkCompletion);
+            });
+        });
+
+
+        socket.on("quiz_results", function(results) {
+            const container = document.getElementById("quiz-results");
+            container.innerHTML = "<h2>Resultados:</h2>";
+            results.forEach(function(r) {
+                const div = document.createElement("div");
+                div.className = r.correct ? "correct" : "incorrect";
+                div.innerHTML = `
+                    <p><strong>${r.question}</strong><br>
+                    ${r.correct ? "✅ Correto!" : "❌ Errado"}<br>
+                    <em>${r.explanation}</em></p>
+                `;
+                container.appendChild(div);
+            });
+        });
+    </script>
+</body>
+</html>

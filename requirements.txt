@@ -1,0 +1,5 @@
+Flask
+Flask-SocketIO
+qrcode
+Pillow
+flask_session

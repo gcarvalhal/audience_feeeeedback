@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard do Formador</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        #pollChart {
+            max-width: 600px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dashboard do Formador</h1>
+
+    <p>Peça aos alunos para fazerem scanner ao QR code para dar feedback:</p>
+    <img src="data:image/png;base64,{{ qr_b64 }}">
+
+    <h2>Feedback ao vivo:</h2>
+    <ul id="feedback">
+        {% for fb in feedback_list %}
+            <li>{{ fb }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Quiz Interativo</h2>
+    <p>Teste os conhecimentos dos alunos com um quiz ao vivo:</p>
+    <a href="{{ url_for('quiz') }}">
+        <button>Iniciar Quiz</button>
+    </a>
+
+    <h2>Desempenho no Quiz</h2>
+    <canvas id="quizChart" width="400" height="200"></canvas>
+
+    <p>Ou aceda à sondagem: <a href="{{ poll_url }}" target="_blank">{{ poll_url }}</a></p>
+
+    <h2>Resultados da Sondagem:</h2>
+    <canvas id="pollChart"></canvas>
+
+    <script>
+        var socket = io();
+
+        // Atualiza feedback ao vivo
+        socket.on("new_feedback", function(data) {
+            var li = document.createElement("li");
+            li.innerText = data;
+            document.getElementById("feedback").appendChild(li);
+        });
+
+        // Inicializa gráfico com dados do servidor
+        var ctx = document.getElementById("pollChart").getContext("2d");
+        var pollChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: {{ poll_results | map(attribute=0) | list | tojson }},
+                datasets: [{
+                    label: "Votos",
+                    data: {{ poll_results | map(attribute=1) | list | tojson }},
+                    backgroundColor: "rgba(54, 162, 235, 0.6)",
+                    borderColor: "rgba(54, 162, 235, 1)",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        precision: 0
+                    }
+                }
+            }
+        });
+
+        // Atualiza gráfico em tempo real
+        socket.on("poll_update", function(data) {
+            pollChart.data.labels = data.options;
+            pollChart.data.datasets[0].data = data.votes;
+            pollChart.update();
+        });
+
+        // Gráfico de respostas corretas vs erradas
+        var ctxQuiz = document.getElementById("quizChart").getContext("2d");
+        var quizChart = new Chart(ctxQuiz, {
+            type: "bar",
+            data: {
+                labels: ["Corretas", "Erradas"],
+                datasets: [{
+                    label: "Respostas",
+                    data: [0, 0],
+                    backgroundColor: ["#4CAF50", "#F44336"],
+                    borderColor: ["#388E3C", "#D32F2F"],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        precision: 0
+                    }
+                }
+            }
+        });
+
+        socket.on("quiz_stats_update", function(stats) {
+            quizChart.data.datasets[0].data = [stats.corretas, stats.erradas];
+            quizChart.update();
+        });
+    </script>
+</body>
+</html>
